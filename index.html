@@ -1,14 +1,3 @@
-<!--///////////////////////////////////////////////////-->
-<!--// 												 //-->
-<!--//             GIANNIOS ANTONIOS     		     //-->
-<!--// 			       P2013153	   					 //-->
-<!--// 				 December 2017					 //-->
-<!--// 												 //-->
-<!--// 			  Project for POLYMESA				 //-->
-<!--// 		  Written in Javascript (PHASER)  		 //-->
-<!--// 												 //-->
-<!--///////////////////////////////////////////////////-->
-
 <!DOCTYPE HTML>
 <html>
 <head>
@@ -54,7 +43,8 @@ body {
 			game.physics.startSystem(Phaser.Physics.ARCADE);
 						}
 
-		function preload() {			
+		function preload() {
+
 			game.time.events.add(Phaser.Timer.SECOND*1, function() {
 			game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');});//google fonts
 			this.load.spritesheet('tiles', 'assets/super_mario_tiles.png', 16, 16);
