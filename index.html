@@ -1,3 +1,14 @@
+<!--///////////////////////////////////////////////////-->
+<!--// 												 //-->
+<!--//             GIANNIOS ANTONIOS     		     //-->
+<!--// 			       P2013153	   					 //-->
+<!--// 				 December 2017					 //-->
+<!--// 												 //-->
+<!--// 			  Project for POLYMESA				 //-->
+<!--// 		  Written in Javascript (PHASER)  		 //-->
+<!--// 												 //-->
+<!--///////////////////////////////////////////////////-->
+
 <!DOCTYPE HTML>
 <html>
 <head>
@@ -8,143 +19,338 @@ body {
 	margin: 0;
 	padding: 0;
 	background-color: #000;
-}
+	 }
 </style>
 <script src="//cdn.jsdelivr.net/phaser/2.6.2/phaser.min.js"></script>
 </head>
 <body>
 	<script type="text/javascript">
-		var game = new Phaser.Game(256, 240, Phaser.CANVAS, '', {
+		WebFontConfig = {
+
+      	google: {families: ['Fontdiner Swanky']}  //google fonts
+      					};
+		var score=0; //score
+		var prevscore = 0; //keeps the score for the next round
+		var highscore=0; //will be used for highscore
+		var scoreText;  //used for score
+		var round=1; //current round
+		var lives=2; //lives of player
+		var maxcoins=0; //shows the number of total coins
+		var grd;
+		var endofgame=false; //flag showing end of the game
+		var game = new Phaser.Game(256, 275, Phaser.CANVAS, '', { //I changed resolution of the gameworld due to better
+																  //appearance of score, live and other messages at the
+																  //bottom
+			init : init,
 			preload : preload,
 			create : create,
-			update : update
-		}, false, false);
+			update : update}, false, false); 
 
-		function preload() {
-
-			//  We need this because the assets are on github pages
-			//  Remove the next 2 lines if running locally
-			this.load.baseURL = 'https://ioniodi.github.io/Super-Mario/';
-			this.load.crossOrigin = 'anonymous';
-
-			this.load.spritesheet('tiles', 'assets/super_mario_tiles.png', 16,
-					16);
-			this.load.spritesheet('goomba', 'assets/goomba.png', 16, 16);
-			this.load.spritesheet('mario', 'assets/mario.png', 16, 16);
-			this.load.spritesheet('coin', 'assets/coin.png', 16, 16);
-
-			this.load.tilemap('level', 'assets/super_mario_map.json', null,
-					Phaser.Tilemap.TILED_JSON);
-		}
-
-		function create() {
-			Phaser.Canvas.setImageRenderingCrisp(game.canvas)
+		function init() {
+			Phaser.Canvas.setImageRenderingCrisp(game.canvas);
 			game.scale.pageAlignHorizontally = true;
-			game.scale.pageAlignVertically = true
+			game.scale.pageAlignVertically = true;
 			game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 			game.physics.startSystem(Phaser.Physics.ARCADE);
+						}
 
+		function preload() {			
+			game.time.events.add(Phaser.Timer.SECOND*1, function() {
+			game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');});//google fonts
+			this.load.spritesheet('tiles', 'assets/super_mario_tiles.png', 16, 16);
+			this.load.spritesheet('goomba', 'assets/goomba.png', 16, 16); //enemy sprite
+			this.load.spritesheet('mario', 'assets/mario.png', 16, 16); //player sprite
+			this.load.spritesheet('coin', 'assets/coin.png', 16, 16);  //visible coin sprites
+			this.load.spritesheet('coin1', 'assets/coin.png', 16, 16); //hidden coin sprite used for calculating score
+			this.game.load.audio('jump',['audio/jump.wav']); //various sounds
+			this.game.load.audio('coinsound',['audio/coin.wav']);
+			this.game.load.audio('killgoomba',['audio/door.wav']);
+			this.game.load.audio('song',['audio/bgm.mp3']); //background song
+			this.load.tilemap('level1', 'assets/super_mario_map1a.json', null,Phaser.Tilemap.TILED_JSON); //level 1
+			this.load.tilemap('level2', 'assets/super_mario_map2.json', null,Phaser.Tilemap.TILED_JSON); //level 2
+						  }
+
+		function create() {
+			construct();
+			song=game.add.audio('song'); //background song
+    		song.loopFull(0.6); 
+    		this.game.sound.play('song');
+    		song.onLoop.add(song.loopFull(0.6), this); //background song plays forever
+    		song.volume=6; //volume of background song		
+						  }
+
+		function construct () {
+			game.time.events.add(Phaser.Timer.SECOND, function() { });
 			game.stage.backgroundColor = '#5c94fc';
-
-			map = game.add.tilemap('level');
-			map.addTilesetImage('tiles', 'tiles');
+			//changing level by variable round
+			if (round===1) 
+			{
+			 	map = game.add.tilemap('level1');
+			}
+        	if (round===2)
+        	{
+				map = game.add.tilemap('level2');
+			}
+ 			map.addTilesetImage('tiles', 'tiles');
 			map.setCollisionBetween(3, 12, true, 'solid');
-
-			map.createLayer('background');
-
+			backgr=map.createLayer('background');
 			layer = map.createLayer('solid');
 			layer.resizeWorld();
-
-			coins = game.add.group();
+			coins = game.add.group(); //visible coins
+			coins1 = game.add.group(); //hidden coins
 			coins.enableBody = true;
-			map.createFromTiles(2, null, 'coin', 'stuff', coins);
-			coins.callAll('animations.add', 'animations', 'spin',
-					[ 0, 0, 1, 2 ], 3, true);
+			coins1.enableBody = true;
+			map.createFromTiles(2, null, 'coin', 'stuff', coins); //visible and hidden coins have the exact same places in gameworld
+			map.createFromTiles(2, null, 'coin1', 'stuff', coins1);
+			coins.callAll('animations.add', 'animations', 'spin', //animation of coins is a diamond going out from a box
+					[ 0, 1, 2, 3, 4, 3, 2, 1, 0 ], 3, true);
 			coins.callAll('animations.play', 'animations', 'spin');
-
-			goombas = game.add.group();
+			maxcoins=coins.total; //max number of coins
+			goombas = game.add.group(); //enemies goombas
 			goombas.enableBody = true;
 			map.createFromTiles(1, null, 'goomba', 'stuff', goombas);
-			goombas.callAll('animations.add', 'animations', 'walk', [ 0, 1 ],
-					2, true);
+			goombas.callAll('animations.add', 'animations', 'walk', [ 0, 1 ], 2, true); //animation of goombas
 			goombas.callAll('animations.play', 'animations', 'walk');
 			goombas.setAll('body.bounce.x', 1);
 			goombas.setAll('body.velocity.x', -20);
 			goombas.setAll('body.gravity.y', 500);
-
-			player = game.add.sprite(16, game.world.height - 48, 'mario');
+			player = game.add.sprite(16, game.world.height - 200, 'mario'); //initial place of player's sprite
 			game.physics.arcade.enable(player);
-			player.body.gravity.y = 370;
+			player.body.gravity.y = 370; 
 			player.body.collideWorldBounds = true;
-			player.animations.add('walkRight', [ 1, 2, 3 ], 10, true);
-			player.animations.add('walkLeft', [ 8, 9, 10 ], 10, true);
-			player.goesRight = true;
-
-			game.camera.follow(player);
-
+			player.animations.add('walkRight', [ 1, 2, 3 ], 10, true); //animation of player walking right
+			player.animations.add('walkLeft', [ 8, 9, 10 ], 10, true); //same animation but for walking left
+			player.goesRight = true; //initial direction of player
+			game.camera.follow(player); //camera follows player
 			cursors = game.input.keyboard.createCursorKeys();
-		}
+			space = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+			q = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT); //button SHIFT used for falling in slow way
+			p = game.input.keyboard.addKey(Phaser.Keyboard.P); //button P used for pausing the game
+			scoreText = this.game.add.text(200, 20); //screen messages for score, round, lives, buttons for playing the game
+		    roundText = this.game.add.text(40, 20);
+		    livesText = this.game.add.text(120, 20);
+		    presspText=	this.game.add.text(10, 240);
+		    usecursorsText=	this.game.add.text(10, 255);
+		    presspText.fixedToCamera = true; //screen messages remain steady on camera movement
+		    scoreText.fixedToCamera = true;
+		    roundText.fixedToCamera = true;
+		    livesText.fixedToCamera = true;
+		    usecursorsText.fixedToCamera = true;
+		    roundText.anchor.setTo(0.5); //google fonts, colour and coordinates for screen messages
+		    roundText.padding.set(0,0);
+		    roundText.fontSize = 14;
+    		roundText.stroke = '#000000';
+    		roundText.strokeThickness = 5;
+    		roundText.fill = '#ff00ff';
+    		roundText.font= 'Fontdiner Swanky';
+    		livesText.anchor.setTo(0.5);
+		    livesText.padding.set(0,0);
+		    livesText.fontSize = 14;
+    		livesText.stroke = '#000000';
+    		livesText.strokeThickness = 5;
+    		livesText.fill = '#ff00ff';
+    		livesText.font= 'Fontdiner Swanky';
+		    scoreText.anchor.setTo(0.5);
+		    scoreText.padding.set(0,0);
+		    scoreText.fontSize = 14;
+    		scoreText.stroke = '#000000';
+    		scoreText.strokeThickness = 5;
+    		scoreText.fill = '#ff00ff';
+    		scoreText.font= 'Fontdiner Swanky';
+		 	gamepausedText = this.game.add.text(130,105);
+            gamepausedText.text ='';
+          	gamepausedText.fixedToCamera = true;
+            gamepausedText.stroke = '#000000';
+            gamepausedText.strokeThickness = 6;
+            gamepausedText.fill = '';
+            gamepausedText.fontWeight = 'italic';
+            gamepausedText.anchor.setTo(0.5);
+	    	gamepausedText.padding.set(10,0);
+	    	gamepausedText.fontSize = 20;
+			gamepausedText.stroke = '#000000';
+			gamepausedText.strokeThickness = 5;
+			gamepausedText.fill = '#ff00ff';
+			gamepausedText.font= 'Fontdiner Swanky';
+		    presspText.fontSize = 10;
+		    presspText.text ='P-->Pause, CURSORS-->Move';
+    		presspText.stroke = '#000000';
+    		presspText.strokeThickness = 5;
+    		presspText.fill = '#ff00ff';
+    		presspText.font= 'Arial Black';
+    		usecursorsText.fontSize = 10;
+		    usecursorsText.text =' SHIFT-->Hold, SPACE-->Long Jump';
+    		usecursorsText.stroke = '#000000';
+    		usecursorsText.strokeThickness = 5;
+    		usecursorsText.fill = '#ff00ff';
+    		usecursorsText.font= 'Arial Black';	
+							}
+
+    	function unpause(event) { //unpausing game
+      		if(game.paused)
+      		{
+        	game.paused=false;
+        	gamepausedText.text ='';
+        	}
+    							}
 
 		function update() {
+			p.onDown.add(unpause, self); //listener for unpausing game
 			game.physics.arcade.collide(player, layer);
 			game.physics.arcade.collide(goombas, layer);
-			game.physics.arcade.overlap(player, goombas, goombaOverlap);
-			game.physics.arcade.overlap(player, coins, coinOverlap);
-
-			if (player.body.enable) {
-				player.body.velocity.x = 0;
-				if (cursors.left.isDown) {
-					player.body.velocity.x = -90;
+			game.physics.arcade.overlap(player, goombas, goombaOverlap); //when player collides enemies
+			game.physics.arcade.overlap(player, coins, coinOverlap); //when player collides visible coins
+			if (player.body.enable && endofgame===false) //checking buttons when there isn't end of the game
+						{
+				player.body.velocity.x = 0; //movement for left cursor 
+				if (cursors.left.isDown)
+				{
+					player.body.velocity.x = -90; //how fast player walks left
 					player.animations.play('walkLeft');
 					player.goesRight = false;
-				} else if (cursors.right.isDown) {
-					player.body.velocity.x = 90;
-					player.animations.play('walkRight');
-					player.goesRight = true;
-				} else {
-					player.animations.stop();
-					if (player.goesRight)
-						player.frame = 0;
+				} 
+				else if (cursors.right.isDown) //movement for right cursor
+					 {
+						player.body.velocity.x = 90; //how fast player walks right
+						player.animations.play('walkRight');
+						player.goesRight = true;
+					 } 
 					else
-						player.frame = 7;
-				}
-
-				if (cursors.up.isDown && player.body.onFloor()) {
+					 {
+						player.animations.stop();
+						if (player.goesRight) //when player isn't moving
+							player.frame = 0; //looks right 
+						else
+							player.frame = 7; //looks left
+					 }
+			}
+			if (space.isDown && player.body.onFloor() && endofgame===false) //long jump when SPACE is pressed
+			{
+					player.body.velocity.y = -350;
+					player.animations.stop();
+					this.game.sound.play("jump");
+			}
+			if (cursors.up.isDown && player.body.onFloor() && endofgame===false) //normal jump when up cursor is pressed
+			{
 					player.body.velocity.y = -190;
 					player.animations.stop();
-				}
-
-				if (player.body.velocity.y != 0) {
+			}
+			if (player.body.velocity.y < 0 && !q.isDown && endofgame===false) //when player is normally falling
+			{
 					if (player.goesRight)
-						player.frame = 5;
+						player.frame = 5;     
 					else
 						player.frame = 12;
-				}
 			}
-		}
+			if (player.body.velocity.y >0 && q.isDown && endofgame===false) //when SHIFT is pressed, player is falling in slow way
+			{
+				player.body.gravity.y = 10; //reduced gravity for slow falling
+				if (player.goesRight)
+					player.frame = 6;  //player sprite is slowly falling when looks right
+				else
+					player.frame = 6; //same when looks left
+			}	
+			else
+				player.body.gravity.y = 370; //normally falling due to normal gravity
+			if (p.isDown && game.paused===false && endofgame===false) //game is paused when P is pressed
+			{
+				game.paused=true;
+				gamepausedText.text ='GAME PAUSED';
+			}	
+			score = prevscore+(maxcoins-coins1.total)*10; //calculating score which is summary of previous score 
+														  //and substraction of max coins and hidden coins multiplied by 10	
+		    scoreText.text = 'Score: ' + score;
+		    roundText.text = 'Round: ' + round;
+		    livesText.text = 'Lives: ' + lives;	   	   
+    					   }
 
-		function coinOverlap(player, coin) {
-			coin.kill();
-		}
+		function coinOverlap(player, coin) { //player colliding with visible coins
+			game.physics.arcade.overlap(player, coins1, coinOverlap1); //player collides with hidden coins same time
+			coin.body.gravity.y = -500; //negative gravity makes visible coins fly up to the sky
+			coin.body.velocity.y = -50; //negative velocity (-50) makes visible coins fly slowly 
+			coin.body.velocity.x = 5; //small horizontal velocity makes coins fly direct up
+			game.time.events.add(Phaser.Timer.SECOND*2, function() {
+			coin.kill();										   }); 
+			scoreText.text = 'Score: ' + score;
+			if (coins1.total === 0) //when there aren't any hidden coins left, level changes to the next one
+	    	{
+    		game.time.events.add(Phaser.Timer.SECOND*3, function() {  });
+			coins.destroy(); //destroying visible, hidden coins, layer, map, player sprite etc and increasing round and keeping score into variable prevscore
+	       	coins1.destroy(); 
+	        scoreText.text = '';
+	        roundText.text = '';
+	       	backgr.destroy(); 
+	        layer.destroy();
+	       	map.destroy();
+	       	goombas.destroy();
+	        player.destroy();
+	        round++;
+	        prevscore=score; 
+	        construct(); //then calling construct function so player is going to next level        
+    		}								}
 
-		function goombaOverlap(player, goomba) {
-			if (player.body.touching.down) {
-				goomba.animations.stop();
+		function coinOverlap1(player, coin1) { //killing one hidden coin when player collides with one visible coin
+			coin1.kill ();
+			game.sound.play("coinsound"); //playing sound for collecting coin
+											 }
+
+		function goombaOverlap(player, goomba) { //when player collides with enemy
+			if (player.body.touching.down)
+			{
+				goomba.animations.stop(); //killing enemy 
 				goomba.frame = 2;
 				goomba.body.enable = false;
 				player.body.velocity.y = -80;
+				game.sound.play('killgoomba'); //playing sound for killing enemy
 				game.time.events.add(Phaser.Timer.SECOND, function() {
-					goomba.kill();
-				});
-			} else {
-				player.frame = 6;
-				player.body.enable = false;
-				player.animations.stop();
-				game.time.events.add(Phaser.Timer.SECOND * 3, function() {
-					game.paused = true;
-				});
+				goomba.kill();						   				 });
+				prevscore+=50; //increasing prevscore for bonus 
+			} 
+			else
+			{
+				goomba.reset(30,1000); 
+				looseLife (); //player looses one life
 			}
-		}
+											  }
+		
+	
+    	function looseLife() { //when player looses one life
+			player.body.enable = false;
+			player.animations.stop(); //stopping animation of player
+			goombas.setAll('body.velocity.x', 0); //pausing animation of enemies for 4 seconds
+			goombas.setAll('body.velocity.y', 0);
+			goombas.setAll('body.gravity.y', 0);
+			game.time.events.add(Phaser.Timer.SECOND*4, function() {
+			goombas.setAll('body.velocity.x', -20); //enemy go to opposite direction
+			goombas.setAll('body.gravity.y', 500);				   });
+			if (lives>0) //decreasing one life 
+			{
+				game.time.events.add(Phaser.Timer.SECOND * 3, function() { 	},this);
+				lives-=1
+				player.kill(); //killing player's sprite
+				player.body.enable=true; 
+			}
+			if (lives!=0) player.reset (16,40);	//putting player's sprite in initial place 			
+			if (lives===0) //no other lives left, so end of the game
+        	{
+	            gameoverText = this.game.add.text(130,105);
+	            gameoverText.text ='GAME OVER' //printing game over on screen
+	          	endofgame=true; //raising up endofthegame flag so player can't move any more
+	            gameoverText.fixedToCamera = true; 
+	            gameoverText.stroke = '#000000';
+	            gameoverText.strokeThickness = 6;
+	            gameoverText.fill = '';
+	            gameoverText.fontWeight = 'italic';
+	            gameoverText.anchor.setTo(0.5);
+		    	gameoverText.padding.set(10,0);
+		    	gameoverText.fontSize = 35;
+    			gameoverText.stroke = '#000000';
+    			gameoverText.strokeThickness = 5;
+    			gameoverText.fill = '#ff00ff';
+    			gameoverText.font= 'Fontdiner Swanky';
+	            goombas.setAll('body.velocity.x', 0);
+				goombas.setAll('body.velocity.y', 0);
+				goombas.setAll('body.gravity.y', 0);
+            }	    	}
 	</script>
 </body>
 </html>
